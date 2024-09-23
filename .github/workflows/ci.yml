@@ -20,17 +20,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang
 
-      - name: Check Clang Version
+      - name: Check Clang++ Version
         run: clang++ --version
 
-      - name: Set up CMake
+      - name: Setup CMake
         uses: jwlawson/actions-setup-cmake@v1
 
-      - name: Configure CMake
+      - name: Configure CMakeX
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++
 
-      - name: Build the project
+      - name: Build
         run: cmake --build build
 
-      - name: Run tests with CTest
+      - name: Run tests
         run: ctest --test-dir build --output-on-failure

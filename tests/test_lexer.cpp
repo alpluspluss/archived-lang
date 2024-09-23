@@ -5,7 +5,7 @@
 #include <iostream>
 #include "../include/lexer.h"
 
-void test_lexer(const std::string& source, size_t expected_token_count, const std::vector<std::pair<lexer::token_type, std::string>>& expected_tokens) {
+void test_lexer(const std::string& source, const size_t expected_token_count, const std::vector<std::pair<lexer::token_type, std::string>>& expected_tokens) {
     lexer::lexer_t lexer;
     lexerInit(lexer, source);
 

@@ -1,5 +1,5 @@
 //
-// Created by Schnond Chansuk on 29/8/2024 AD.
+// Created by alpluspluss on 9/22/2024 AD.
 //
 
 #include "../include/lexer.h"
@@ -9,6 +9,21 @@
 #include <iostream>
 #include <unordered_set>
 
+#define WHITESPACE_BITMASK_LOW (1ULL << ' ' | 1ULL << '\t' | 1ULL << '\n' | 1ULL << '\r' | 1ULL << '\v' | 1ULL << '\f')
+#define IS_WHITESPACE(c) (((unsigned char)(c) < 128) && (WHITESPACE_BITMASK_LOW & (1ULL << (c))))
+#define ADVANCE(lexer)  \
+    do  \
+    {   \
+        ++(lexer).position; \
+        (lexer).current_char = ((lexer).position < (lexer).source.size()) ? (lexer).source[(lexer).position] : '\0';    \
+        int is_newline = (lexer).current_char == '\n';  \
+        (lexer).line += is_newline; \
+        (lexer).column = is_newline ? 1 : ((lexer).column + 1); \
+    }   \
+    while (0) \
+
+#define PEEK_NEXT(lexer) \
+    ((lexer).position + 1 < (lexer).source.size() ? (lexer).source[(lexer).position + 1] : '\0')
 static constexpr std::bitset<256> isAlphaTable = []
 {
     std::bitset<256> table;
@@ -37,44 +52,22 @@ static constexpr std::bitset<256> isXdigitTable = []
     return table;
 }();
 static constexpr std::bitset<256> is_alnum_table = isAlphaTable | isDigitTable;
-
 constexpr bool isAlpha(const char c)
 {
     return isAlphaTable[static_cast<unsigned char>(c)];
 }
-
 constexpr bool isDigit(const char c)
 {
     return isDigitTable[static_cast<unsigned char>(c)];
 }
-
 constexpr bool isXdigit(const char c)
 {
     return isXdigitTable[static_cast<unsigned char>(c)];
 }
-
 constexpr bool isAlnum(const char c)
 {
     return is_alnum_table[static_cast<unsigned char>(c)];
 }
-
-#define ADVANCE(lexer)                          \
-    do {                                        \
-        if ((lexer).position < (lexer).source.size()) {  \
-            (lexer).current_char = (lexer).source[++(lexer).position]; \
-            ++(lexer).column;                   \
-            if ((lexer).current_char == '\n') { \
-                ++(lexer).line;                 \
-                (lexer).column = 1;             \
-            }                                   \
-        } else {                                \
-            (lexer).current_char = '\0';        \
-        }                                       \
-    } while(0)
-
-#define PEEK_NEXT(lexer) \
-    ((lexer).position + 1 < (lexer).source.size() ? (lexer).source[(lexer).position + 1] : '\0')
-
 static constexpr std::array<std::pair<std::string_view, lexer::token_type>, 25> keyword_t = {{
     { "true", lexer::token_type::KEYWORD }, { "false", lexer::token_type::KEYWORD }, { "null", lexer::token_type::KEYWORD },
     { "package", lexer::token_type::KEYWORD }, { "import", lexer::token_type::KEYWORD }, { "from", lexer::token_type::KEYWORD },
@@ -84,22 +77,18 @@ static constexpr std::array<std::pair<std::string_view, lexer::token_type>, 25> 
     { "static", lexer::token_type::KEYWORD }, { "virtual", lexer::token_type::KEYWORD }, { "inherits", lexer::token_type::KEYWORD },
     { "final", lexer::token_type::KEYWORD }
 }};
-
 static constexpr std::array<std::pair<std::string_view, lexer::token_type>, 10> type_t = {{
     { "i32", lexer::token_type::TYPE }, { "i64", lexer::token_type::TYPE }, { "u32", lexer::token_type::TYPE }, { "u64", lexer::token_type::TYPE },
     { "f32", lexer::token_type::TYPE }, { "f64", lexer::token_type::TYPE }, { "string", lexer::token_type::TYPE }, { "boolean", lexer::token_type::TYPE },
     { "void", lexer::token_type::TYPE }, { "auto", lexer::token_type::TYPE }
 }};
-
 static const std::unordered_set<std::string_view> twoCharOp_t = {
     "->", "==", "!=", "<=", ">=", "&&", "||", "<<", ">>", "++", "--", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>="
 };
-
 void reportError(lexer::lexer_t& lexer, const std::string& msg)
 {
     lexer.error_log.push_back(msg);
 }
-
 void lexer::lexerInit(lexer_t& lexer, const std::string_view source)
 {
     lexer.source = source;
@@ -111,69 +100,43 @@ void lexer::lexerInit(lexer_t& lexer, const std::string_view source)
     lexer.tokens.clear();
     lexer.error_log.clear();
 }
-
 void lexer::skipWhitespaceAndComment(lexer_t& lexer)
 {
-    while (lexer.current_char != '\0' && (std::isspace(lexer.current_char) || lexer.current_char == '\n'))
+    while (true)
     {
-        if (lexer.current_char == '\n')
-        {
-            ++lexer.line;
-            lexer.column = 1;
-        }
-        else
-        {
-            ++lexer.column;
-        }
-
-        ADVANCE(lexer);
-    }
-
-    if (lexer.current_char == '/' && PEEK_NEXT(lexer) == '/')
-    {
-        while (lexer.current_char != '\0' && lexer.current_char != '\n')
+        while (IS_WHITESPACE(lexer.current_char))
             ADVANCE(lexer);
-
-        if (lexer.current_char == '\n')
-        {
-            lexer.line++;
-            lexer.column = 1;
-        }
-
-        ADVANCE(lexer);
-        skipWhitespaceAndComment(lexer);
-    }
-
-    else if (lexer.current_char == '/' && PEEK_NEXT(lexer) == '*')
-    {
-        ADVANCE(lexer);
-        ADVANCE(lexer);
-
-        while (lexer.current_char != '\0' && !(lexer.current_char == '*' && PEEK_NEXT(lexer) == '/'))
-        {
-            if (lexer.current_char == '\n')
-            {
-                lexer.line++;
-                lexer.column = 1;
-            }
-            else
-            {
-                lexer.column++;
-            }
-            ADVANCE(lexer);
-        }
-
-        if (lexer.current_char == '*')
+        if (lexer.current_char == '/' && PEEK_NEXT(lexer) == '/')
         {
             ADVANCE(lexer);
-            if (lexer.current_char == '/')
+            ADVANCE(lexer);
+            while (lexer.current_char != '\0' && lexer.current_char != '\n')
                 ADVANCE(lexer);
-        }
 
-        skipWhitespaceAndComment(lexer);
+            if (lexer.current_char == '\n')
+                ADVANCE(lexer);
+            continue;
+        }
+        if (lexer.current_char == '/' && PEEK_NEXT(lexer) == '*')
+        {
+            ADVANCE(lexer);
+            ADVANCE(lexer);
+            while (lexer.current_char != '\0' && !(lexer.current_char == '*' && PEEK_NEXT(lexer) == '/'))
+                ADVANCE(lexer);
+
+            if (lexer.current_char == '*')
+            {
+                ADVANCE(lexer);
+                if (lexer.current_char == '/')
+                {
+                    ADVANCE(lexer);
+                }
+            }
+            continue;
+        }
+        break;
     }
 }
-
 lexer::token_t lexer::handleIdentifier(lexer_t& lexer)
 {
     const auto start = lexer.position;
@@ -197,55 +160,47 @@ lexer::token_t lexer::handleIdentifier(lexer_t& lexer)
         return { keyword_it->second, identifier };
     return { token_type::IDENTIFIER, identifier };
 }
-
 lexer::token_t lexer::handleLiteral(lexer_t& lexer)
 {
     const auto start = lexer.position;
-    if (lexer.current_char == '-' || lexer.current_char == '+')
+
+    if (lexer.current_char == '-')
         ADVANCE(lexer);
 
-    if (lexer.current_char == '0' && (PEEK_NEXT(lexer) == 'x' || PEEK_NEXT(lexer) == 'X'))
+    const bool isHex = lexer.current_char == '0' && (PEEK_NEXT(lexer) == 'x' || PEEK_NEXT(lexer) == 'X');
+    if (isHex)
     {
         ADVANCE(lexer);
         ADVANCE(lexer);
-        while (isXdigit(lexer.current_char))
-            ADVANCE(lexer);
     }
-    else if (lexer.current_char == '0' && isDigit(PEEK_NEXT(lexer)))
+
+    while ((isHex && isXdigit(lexer.current_char)) || (!isHex && isDigit(lexer.current_char)))
+        ADVANCE(lexer);
+
+    if (!isHex && lexer.current_char == '.')
     {
         ADVANCE(lexer);
-        while (lexer.current_char >= '0' && lexer.current_char <= '7')
-            ADVANCE(lexer);
-    }
-    else
-    {
         while (isDigit(lexer.current_char))
             ADVANCE(lexer);
-        if (lexer.current_char == '.')
-        {
-            ADVANCE(lexer);
-            while (isDigit(lexer.current_char))
-                ADVANCE(lexer);
-        }
-        if (lexer.current_char == 'e' || lexer.current_char == 'E')
-        {
-            ADVANCE(lexer);
-            if (lexer.current_char == '+' || lexer.current_char == '-')
-                ADVANCE(lexer);
-            while (isDigit(lexer.current_char))
-                ADVANCE(lexer);
-        }
     }
+
+    if (!isHex && (lexer.current_char == 'e' || lexer.current_char == 'E'))
+    {
+        ADVANCE(lexer);
+        if (lexer.current_char == '+' || lexer.current_char == '-')
+            ADVANCE(lexer);
+        while (isDigit(lexer.current_char))
+            ADVANCE(lexer);
+    }
+
     return { token_type::LITERAL, lexer.source.substr(start, lexer.position - start) };
 }
-
 lexer::token_t lexer::handleOperator(lexer_t& lexer)
 {
     const auto start = lexer.position;
     if (lexer.current_char != '\0' && PEEK_NEXT(lexer) != '\0')
     {
-        std::string_view two_char_op(lexer.source.data() + start, 2);
-        if (twoCharOp_t.contains(two_char_op))
+        if (const std::string_view two_char_op(lexer.source.data() + start, 2); twoCharOp_t.contains(two_char_op))
         {
             ADVANCE(lexer);
             ADVANCE(lexer);
@@ -263,7 +218,6 @@ lexer::token_t lexer::handleOperator(lexer_t& lexer)
 
     return { token_type::UNKNOWN, lexer.source.substr(start, 1) };
 }
-
 lexer::token_t lexer::handlePunctual(lexer_t& lexer)
 {
     const auto start = lexer.position;
@@ -278,16 +232,20 @@ lexer::token_t lexer::handlePunctual(lexer_t& lexer)
 
     return { token_type::PUNCTUAL, lexer.source.substr(start, 1) };
 }
-
 lexer::token_t lexer::handleString(lexer_t& lexer)
 {
     const auto start = lexer.position;
     const char quoteType = lexer.current_char;
     ADVANCE(lexer);
 
-    while (lexer.current_char != '\0' && lexer.current_char != quoteType)
+    auto isEscaped = false;
+
+    while (lexer.current_char != '\0' && (lexer.current_char != quoteType || isEscaped))
     {
-        if (lexer.current_char == '\\') ADVANCE(lexer);
+        if (lexer.current_char == '\\')
+            isEscaped = !isEscaped;
+        else
+            isEscaped = false;
         ADVANCE(lexer);
     }
 
@@ -296,11 +254,10 @@ lexer::token_t lexer::handleString(lexer_t& lexer)
         ADVANCE(lexer);
         return { token_type::STRING, lexer.source.substr(start, lexer.position - start) };
     }
-    ADVANCE(lexer);
+
     reportError(lexer, "Unclosed string literal at line " + std::to_string(lexer.line) + ", column " + std::to_string(lexer.column));
     return { token_type::UNKNOWN, lexer.source.substr(start, lexer.position - start) };
 }
-
 lexer::token_t lexer::handleType(lexer_t& lexer)
 {
     const auto start = lexer.position;
@@ -344,7 +301,6 @@ lexer::token_t lexer::handleType(lexer_t& lexer)
 
     return { token_type::UNKNOWN, typeName };
 }
-
 lexer::token_t lexer::handleUnknown(lexer_t& lexer)
 {
     const std::string error_msg = "Unknown character '" + std::string(1, lexer.current_char) + "' at line " + std::to_string(lexer.line) + ", column " + std::to_string(lexer.column);
@@ -352,7 +308,6 @@ lexer::token_t lexer::handleUnknown(lexer_t& lexer)
     ADVANCE(lexer);
     return { token_type::UNKNOWN, {} };
 }
-
 lexer::token_t lexer::nextToken(lexer_t& lexer)
 {
     while (true)
@@ -411,7 +366,6 @@ lexer::token_t lexer::nextToken(lexer_t& lexer)
         }
     }
 }
-
 std::vector<lexer::token_t> lexer::tokenize(lexer_t& lexer)
 {
     std::vector<token_t> tokens;
@@ -429,7 +383,6 @@ std::vector<lexer::token_t> lexer::tokenize(lexer_t& lexer)
 
     return tokens;
 }
-
 void lexer::flushErrors(const lexer_t& lexer)
 {
     for (const auto& error : lexer.error_log)
