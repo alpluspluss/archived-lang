@@ -241,24 +241,25 @@ lexer::token_t lexer::handleLiteral(lexer_t& lexer)
 
 lexer::token_t lexer::handleOperator(lexer_t& lexer)
 {
-    if (lexer.current_char == '-' && isDigit(PEEK_NEXT(lexer)))
-        return handleLiteral(lexer);
-
     const auto start = lexer.position;
-    const char first_char = lexer.current_char;
-    ADVANCE(lexer);
-
-    if (lexer.current_char != '\0')
+    if (lexer.current_char != '\0' && PEEK_NEXT(lexer) != '\0')
     {
-        if (const std::string_view two_char_op(lexer.source.data() + start, 2); twoCharOp_t.contains(two_char_op))
+        std::string_view two_char_op(lexer.source.data() + start, 2);
+        if (twoCharOp_t.contains(two_char_op))
         {
+            ADVANCE(lexer);
             ADVANCE(lexer);
             return { token_type::OPERATOR, two_char_op };
         }
     }
 
+    const char first_char = lexer.current_char;
+    ADVANCE(lexer);
+
     if (strchr("~&|^<>+-*/%=!.", first_char))
+    {
         return { token_type::OPERATOR, lexer.source.substr(start, 1) };
+    }
 
     return { token_type::UNKNOWN, lexer.source.substr(start, 1) };
 }
@@ -306,22 +307,29 @@ lexer::token_t lexer::handleType(lexer_t& lexer)
     if (lexer.current_char == '[')
     {
         ADVANCE(lexer);
-        while (lexer.current_char != '\0' && lexer.current_char != ']')
+        while (isAlnum(lexer.current_char) || lexer.current_char == '_')
             ADVANCE(lexer);
+
+        if (lexer.current_char == '?')
+        {
+            ADVANCE(lexer);
+        }
+
         if (lexer.current_char == ']')
         {
             ADVANCE(lexer);
         }
+
+        return { token_type::TYPE, lexer.source.substr(start, lexer.position - start) };
     }
 
     while (isAlnum(lexer.current_char) || lexer.current_char == '_')
         ADVANCE(lexer);
 
-    auto isNullable = false;
     if (lexer.current_char == '?')
     {
-        isNullable = true;
         ADVANCE(lexer);
+        return { token_type::NULLABLE_TYPE, lexer.source.substr(start, lexer.position - start) };
     }
 
     std::string_view typeName = lexer.source.substr(start, lexer.position - start);
@@ -332,11 +340,10 @@ lexer::token_t lexer::handleType(lexer_t& lexer)
     });
 
     if (type_it != type_t.end())
-        return { isNullable ? token_type::NULLABLE_TYPE : token_type::TYPE, typeName };
+        return { token_type::TYPE, typeName };
 
     return { token_type::UNKNOWN, typeName };
 }
-
 
 lexer::token_t lexer::handleUnknown(lexer_t& lexer)
 {

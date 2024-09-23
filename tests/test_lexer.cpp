@@ -36,7 +36,7 @@ int main()
     test_lexer("var x = 10;", 6, {
         {lexer::token_type::KEYWORD, "var"},
         {lexer::token_type::IDENTIFIER, "x"},
-        {lexer::token_type::PUNCTUAL, "="},
+        {lexer::token_type::OPERATOR, "="},
         {lexer::token_type::LITERAL, "10"},
         {lexer::token_type::PUNCTUAL, ";"},
         {lexer::token_type::END_OF_FILE, ""}
@@ -60,7 +60,7 @@ int main()
     test_lexer("var s = \"Hello, World!\";", 6, {
         {lexer::token_type::KEYWORD, "var"},
         {lexer::token_type::IDENTIFIER, "s"},
-        {lexer::token_type::PUNCTUAL, "="},
+        {lexer::token_type::OPERATOR, "="},
         {lexer::token_type::STRING, "\"Hello, World!\""},
         {lexer::token_type::PUNCTUAL, ";"},
         {lexer::token_type::END_OF_FILE, ""}
@@ -70,7 +70,7 @@ int main()
     test_lexer("var x = 10; // This is a comment", 6, {
         {lexer::token_type::KEYWORD, "var"},
         {lexer::token_type::IDENTIFIER, "x"},
-        {lexer::token_type::PUNCTUAL, "="},
+        {lexer::token_type::OPERATOR, "="},
         {lexer::token_type::LITERAL, "10"},
         {lexer::token_type::PUNCTUAL, ";"},
         {lexer::token_type::END_OF_FILE, ""}
@@ -80,7 +80,7 @@ int main()
     test_lexer("var x /* comment */ = 10;", 6, {
         {lexer::token_type::KEYWORD, "var"},
         {lexer::token_type::IDENTIFIER, "x"},
-        {lexer::token_type::PUNCTUAL, "="},
+        {lexer::token_type::OPERATOR, "="},
         {lexer::token_type::LITERAL, "10"},
         {lexer::token_type::PUNCTUAL, ";"},
         {lexer::token_type::END_OF_FILE, ""}
@@ -96,7 +96,7 @@ int main()
     });
 
     // Test 7: Complex statement
-    test_lexer("if (x <= 100 && x != 0) { y = x / 2; }", 18, {
+    test_lexer("if (x <= 100 && x != 0) { y = x / 2; }", 19, {
         {lexer::token_type::KEYWORD, "if"},
         {lexer::token_type::PUNCTUAL, "("},
         {lexer::token_type::IDENTIFIER, "x"},
@@ -109,12 +109,13 @@ int main()
         {lexer::token_type::PUNCTUAL, ")"},
         {lexer::token_type::PUNCTUAL, "{"},
         {lexer::token_type::IDENTIFIER, "y"},
-        {lexer::token_type::PUNCTUAL, "="},
+        {lexer::token_type::OPERATOR, "="},
         {lexer::token_type::IDENTIFIER, "x"},
         {lexer::token_type::OPERATOR, "/"},
         {lexer::token_type::LITERAL, "2"},
         {lexer::token_type::PUNCTUAL, ";"},
-        {lexer::token_type::PUNCTUAL, "}"}
+        {lexer::token_type::PUNCTUAL, "}"},
+        {lexer::token_type::END_OF_FILE, ""}
     });
 
     // Test 8: Nullables and types
@@ -123,22 +124,23 @@ int main()
         {lexer::token_type::IDENTIFIER, "a"},
         {lexer::token_type::PUNCTUAL, ":"},
         {lexer::token_type::NULLABLE_TYPE, "i32?"},
-        {lexer::token_type::PUNCTUAL, "="},
+        {lexer::token_type::OPERATOR, "="},
         {lexer::token_type::KEYWORD, "null"},
         {lexer::token_type::PUNCTUAL, ";"},
         {lexer::token_type::END_OF_FILE, ""}
     });
 
     // Test 9: Arrays and nullable types
-    test_lexer("var arr: [i32?] = [];", 8, {
+    test_lexer("var arr: [i32?] = {};", 9, {
         {lexer::token_type::KEYWORD, "var"},
         {lexer::token_type::IDENTIFIER, "arr"},
         {lexer::token_type::PUNCTUAL, ":"},
         {lexer::token_type::TYPE, "[i32?]"},
-        {lexer::token_type::PUNCTUAL, "="},
-        {lexer::token_type::PUNCTUAL, "["},
-        {lexer::token_type::PUNCTUAL, "]"},
-        {lexer::token_type::PUNCTUAL, ";"}
+        {lexer::token_type::OPERATOR, "="},
+        {lexer::token_type::PUNCTUAL, "{"},
+        {lexer::token_type::PUNCTUAL, "}"},
+        {lexer::token_type::PUNCTUAL, ";"},
+        {lexer::token_type::END_OF_FILE, ""}
     });
 
     std::cout << "All tests passed!" << std::endl;
