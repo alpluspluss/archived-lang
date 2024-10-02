@@ -8,9 +8,7 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,7 +21,7 @@ jobs:
       - name: Check Clang++ Version
         run: clang++ --version
 
-      - name: Setup CMake
+      - name: Setup CMakeX
         uses: jwlawson/actions-setup-cmake@v2
 
       - name: Configure CMakeX
