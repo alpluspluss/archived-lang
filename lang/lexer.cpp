@@ -49,7 +49,7 @@ static const std::bitset<256> isXdigitTable = []
     for (int i = 'a'; i <= 'f'; ++i)
     {
         table.set(i);
-        table.set(i - 32);  // A-F
+        table.set(i - 32);
     }
     return table;
 }();
@@ -74,12 +74,12 @@ constexpr bool isAlnum(const char c)
 
 static const std::array<std::pair<std::string_view, lexer::token_type>, 25> keyword_t = {{
     { "true", lexer::token_type::KEYWORD }, { "false", lexer::token_type::KEYWORD }, { "null", lexer::token_type::KEYWORD },
-    { "package", lexer::token_type::KEYWORD }, { "import", lexer::token_type::KEYWORD }, { "from", lexer::token_type::KEYWORD },
+    { "using", lexer::token_type::KEYWORD }, { "import", lexer::token_type::KEYWORD }, { "from", lexer::token_type::KEYWORD },
     { "var", lexer::token_type::KEYWORD }, { "const", lexer::token_type::KEYWORD }, { "function", lexer::token_type::KEYWORD },
     { "return", lexer::token_type::KEYWORD }, { "if", lexer::token_type::KEYWORD }, { "else", lexer::token_type::KEYWORD },
     { "for", lexer::token_type::KEYWORD }, { "while", lexer::token_type::KEYWORD }, { "class", lexer::token_type::KEYWORD },
     { "static", lexer::token_type::KEYWORD }, { "virtual", lexer::token_type::KEYWORD }, { "inherits", lexer::token_type::KEYWORD },
-    { "final", lexer::token_type::KEYWORD }
+    { "final", lexer::token_type::KEYWORD }, { "public", lexer::token_type::KEYWORD }, { "private", lexer::token_type::KEYWORD }
 }};
 
 static const std::array<std::pair<std::string_view, lexer::token_type>, 10> type_t = {{
@@ -89,7 +89,7 @@ static const std::array<std::pair<std::string_view, lexer::token_type>, 10> type
 }};
 
 static const std::unordered_set<std::string_view> twoCharOp_t = {
-    "->", "==", "!=", "<=", ">=", "&&", "||", "<<", ">>", "++", "--", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>="
+    "->", "==", "!=", "<=", ">=", "&&", "||", "<<", ">>", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>="
 };
 
 void reportError(lexer::lexer_t& lexer, const std::string& msg)
@@ -149,10 +149,38 @@ void lexer::skip_whitespace_comment(lexer_t& lexer)
     }
 }
 
+lexer::token_t lexer::handle_annotation(lexer_t& lexer)
+{
+    const auto start = lexer.position;
+    ADVANCE(lexer);
+    while (isAlnum(lexer.current_char) || lexer.current_char == '_')
+    {
+        ADVANCE(lexer);
+    }
+
+    std::string_view annotation_name = lexer.source.substr(start, lexer.position - start);
+
+    if (lexer.current_char == '(')
+    {
+        ADVANCE(lexer);
+        while (lexer.current_char != ')' && lexer.current_char != '\0')
+        {
+            ADVANCE(lexer);
+        }
+        if (lexer.current_char == ')')
+        {
+            ADVANCE(lexer);
+        }
+        annotation_name = lexer.source.substr(start, lexer.position - start);
+    }
+
+    return { token_type::ANNOTATION, annotation_name };
+}
+
 lexer::token_t lexer::handle_identifier(lexer_t& lexer)
 {
     const auto start = lexer.position;
-    while (isAlnum(lexer.current_char) || lexer.current_char == '_')
+    while (isAlnum(lexer.current_char) || lexer.current_char == '_' || lexer.current_char == '.')
     {
         ADVANCE(lexer);
     }
@@ -281,6 +309,31 @@ lexer::token_t lexer::handle_string(lexer_t& lexer)
     return { token_type::UNKNOWN, lexer.source.substr(start, lexer.position - start) };
 }
 
+lexer::token_t lexer::handle_generic(lexer_t& lexer)
+{
+    const auto start = lexer.position;
+    ADVANCE(lexer);
+
+    while (lexer.current_char != '>' && lexer.current_char != '\0')
+    {
+        if (lexer.current_char == '<')
+        {
+            lexer.state = state_i::GENERIC_STATE;
+            return handle_generic(lexer);
+        }
+        ADVANCE(lexer);
+    }
+
+    if (lexer.current_char == '>')
+    {
+        ADVANCE(lexer);
+        return { token_type::TYPE, lexer.source.substr(start, lexer.position - start) };
+    }
+
+    reportError(lexer, "Unclosed generic type at line " + std::to_string(lexer.line) + ", column " + std::to_string(lexer.column));
+    return { token_type::UNKNOWN, lexer.source.substr(start, lexer.position - start) };
+}
+
 lexer::token_t lexer::handle_type(lexer_t& lexer)
 {
     const auto start = lexer.position;
@@ -344,7 +397,11 @@ lexer::token_t lexer::next_token(lexer_t& lexer)
         switch (lexer.state)
         {
             case state_i::START:
-                if (isAlpha(lexer.current_char) || lexer.current_char == '_')
+                if (lexer.current_char == '@')
+                {
+                    lexer.state = state_i::ANNOTATION_STATE;
+                }
+                else if (isAlpha(lexer.current_char) || lexer.current_char == '_')
                 {
                     lexer.state = state_i::IDENTIFIER_STATE;
                 }
@@ -368,12 +425,18 @@ lexer::token_t lexer::next_token(lexer_t& lexer)
                 {
                     lexer.state = state_i::PUNCTUAL_STATE;
                 }
+                else if (lexer.current_char == '<')
+                {
+                    lexer.state = state_i::GENERIC_STATE;
+                }
                 else
                 {
                     lexer.state = state_i::UNKNOWN_STATE;
                 }
             break;
 
+            case state_i::ANNOTATION_STATE:
+                return handle_annotation(lexer);
             case state_i::IDENTIFIER_STATE:
                 return handle_identifier(lexer);
             case state_i::TYPE_STATE:
@@ -386,6 +449,8 @@ lexer::token_t lexer::next_token(lexer_t& lexer)
                 return handle_operator(lexer);
             case state_i::PUNCTUAL_STATE:
                 return handle_punctual(lexer);
+            case state_i::GENERIC_STATE:
+                return handle_generic(lexer);
             default:
                 reportError(lexer, "Unexpected state at line " + std::to_string(lexer.line) + ", column " + std::to_string(lexer.column));
         }

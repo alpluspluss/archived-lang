@@ -1,56 +1,57 @@
-/*
- * Quanta-Lang semantics
-*/
-
-// Define package
 package stdlib.io;
 
-// struct
-struct Vector3
+@packed
+@aligned(16)
+class Vector3
 {
-    // Default to 0
     var x: i32 = 0;
     var y: i32 = 0;
     var z: i32 = 0;
 };
 
-// Wrapper class
-class Vector3
+class Player
 {
-    private var array: [ i64 ] = { -1009876545678 };
-    private var vec3: Vector3[] = struct Vector3 { x = 10, y = 20, z = -10 };
+    private var position: Vector3 = Vector3({ x = 10, y = 20, z = -10 });
 
-    public Vector3(x: i32, y: i32, z: i32) -> Vector3
+    public Player(x: f32, y: f32, z: f32) -> Player
     {
-        vec3.x = x;
-        vec3.y = y;
-        vec3.z = z;
-    };
-    public static Dot(vec1: Vector3, vec2: Vector3) -> Vector3 // Return Vector3 class
-    {
-        return new Vector3(vec1.x + vec2.x, vec1.y + vec2.y, vec1.z + vec2.z);
-    };
+        self.position.x = x;
+        self.position.y = y;
+        self.position.z = z;
+    }
 
-    public static Lerp(vec1: Vector3, vec2: Vector3, dt: f32) -> Vector3 // Return Vector3 class
+    public function Move(dx: f32, dy: f32) -> void
     {
-        return new Vector3(
-            vec1.x + (vec2.x - vec1.x) * dt,
-            vec1.y + (vec2.y - vec1.y) * dt,
-            vec1.z + (vec2.z - vec1.z) * dt
-        );
-    };
+        self.position.x += dx;
+        self.position.y += dy;
+    }
 
-    /* And so on */
+    public static Dot(vec1: Vector3, vec2: Vector3) -> f32
+    {
+        return (vec1.x * vec2.x) + (vec1.y * vec2.y) + (vec1.z * vec2.z);
+    }
 }
 
-// Driver function
+class Generic<T>
+{
+    var value: T;
+
+    public function GetValue() -> T
+    {
+        return self.value;
+    }
+}
+
 function Main() -> u8
 {
-    var x: u32 = 0;
-    ++x;
-    x++;
+    var player: Player = new Player(0.0, 0.0, 0.0);
+    player.Move(1.0, 2.0);
 
-    var y: u32 = x + 5;
+    var result: f32 = Player.Dot(Vector3(1, 2, 3), Vector3(4, 5, 6));
+
+    var intGeneric: Generic<i32> = new Generic<i32>();
+    intGeneric.value = 42;
+    var intValue: i32 = intGeneric.GetValue();
 
     return 0;
 }

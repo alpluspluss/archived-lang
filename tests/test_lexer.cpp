@@ -158,6 +158,24 @@ void test_array_types()
     std::cout << "Array Types Passed" << std::endl;
 }
 
+void test_annotation_types()
+{
+    lexer::lexer_t lexer;
+    lexer_init(lexer, "@deprecated @test @aligned(16)");
+    auto tokens = tokenize(lexer);
+
+    assert(tokens.size() == 3);
+    assert(tokens[0].type == lexer::token_type::ANNOTATION);
+    assert(tokens[0].value == "@deprecated");
+    assert(tokens[1].type == lexer::token_type::ANNOTATION);
+    assert(tokens[1].value == "@test");
+    assert(tokens[2].type == lexer::token_type::ANNOTATION);
+    assert(tokens[2].value == "@aligned(16)");
+    assert(tokens[3].type == lexer::token_type::END_OF_FILE);
+
+    std::cout << "Annotation Types Passed" << std::endl;
+}
+
 int main()
 {
     test_basic_tokenization();
@@ -169,6 +187,7 @@ int main()
     test_basic_types();
     test_nullable_types();
     test_array_types();
+    test_annotation_types();
 
     std::cout << "All Tests Passed" << std::endl;
     return 0;
