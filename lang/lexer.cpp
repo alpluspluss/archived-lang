@@ -71,7 +71,7 @@ constexpr bool isAlnum(const char c)
     return is_alnum_table[static_cast<unsigned char>(c)];
 }
 
-static constexpr std::array<std::pair<std::string_view, lexer::token_type>, 25> keyword_t = {{
+static const std::array<std::pair<std::string_view, lexer::token_type>, 25> keyword_t = {{
     { "true", lexer::token_type::KEYWORD }, { "false", lexer::token_type::KEYWORD }, { "null", lexer::token_type::KEYWORD },
     { "package", lexer::token_type::KEYWORD }, { "import", lexer::token_type::KEYWORD }, { "from", lexer::token_type::KEYWORD },
     { "var", lexer::token_type::KEYWORD }, { "const", lexer::token_type::KEYWORD }, { "function", lexer::token_type::KEYWORD },
@@ -81,7 +81,7 @@ static constexpr std::array<std::pair<std::string_view, lexer::token_type>, 25> 
     { "final", lexer::token_type::KEYWORD }
 }};
 
-static constexpr std::array<std::pair<std::string_view, lexer::token_type>, 10> type_t = {{
+static const std::array<std::pair<std::string_view, lexer::token_type>, 10> type_t = {{
     { "i32", lexer::token_type::TYPE }, { "i64", lexer::token_type::TYPE }, { "u32", lexer::token_type::TYPE }, { "u64", lexer::token_type::TYPE },
     { "f32", lexer::token_type::TYPE }, { "f64", lexer::token_type::TYPE }, { "string", lexer::token_type::TYPE }, { "boolean", lexer::token_type::TYPE },
     { "void", lexer::token_type::TYPE }, { "auto", lexer::token_type::TYPE }
