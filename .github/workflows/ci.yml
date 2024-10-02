@@ -21,17 +21,17 @@ jobs:
       - name: Check Clang++ Version
         run: clang++ --version
 
-      - name: Setup CMakeX
+      - name: Setup CMake
         uses: jwlawson/actions-setup-cmake@v2
 
-      - name: Configure CMakeX
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_STANDARD=20
-
-      - name: Clean Build
+      - name: Clean Build Directory
         run: rm -rf build
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_STANDARD=20
 
       - name: Build
         run: cmake --build build
 
-      - name: Run tests
+      - name: Run Tests
         run: ctest --test-dir build --output-on-failure
