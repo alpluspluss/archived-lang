@@ -27,6 +27,12 @@ jobs:
       - name: Configure CMakeX
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_STANDARD=20
 
+      - name: Clean Build Directory
+        run: rm -rf build
+
+      - name: Clean Build
+        run: cmake --build build --target clean
+
       - name: Build
         run: cmake --build build
 
