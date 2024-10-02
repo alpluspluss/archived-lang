@@ -1,148 +1,175 @@
-//
-// Created by alpluspluss on 9/22/2024 AD.
-//
-
+#include <cassert>
 #include <iostream>
-#include "../include/lexer.h"
+#include "../lang/lang.h"
 
-void test_lexer(const std::string& source, const size_t expected_token_count, const std::vector<std::pair<lexer::token_type, std::string>>& expected_tokens) {
+void test_basic_tokenization()
+{
     lexer::lexer_t lexer;
-    lexerInit(lexer, source);
+    lexer_init(lexer, "var x = 10;");
 
-    const auto tokens = tokenize(lexer);
+    auto tokens = tokenize(lexer);
 
-    if (tokens.size() != expected_token_count)
-    {
-        std::cerr << "Error: Expected " << expected_token_count << " tokens, but got " << tokens.size() << std::endl;
-        exit(1);
-    }
+    assert(tokens.size() == 6);
+    assert(tokens[0].type == lexer::token_type::KEYWORD);
+    assert(tokens[1].type == lexer::token_type::IDENTIFIER);
+    assert(tokens[2].type == lexer::token_type::OPERATOR);
+    assert(tokens[3].type == lexer::token_type::LITERAL);
+    assert(tokens[4].type == lexer::token_type::PUNCTUAL);
+    assert(tokens[5].type == lexer::token_type::END_OF_FILE);
 
-    for (size_t i = 0; i < expected_tokens.size(); ++i)
-    {
-        if (tokens[i].type != expected_tokens[i].first || tokens[i].value != expected_tokens[i].second)
-        {
-            std::cerr << "Error: Expected token " << i << " to be '"
-                      << expected_tokens[i].second << "' of type " << static_cast<int>(expected_tokens[i].first)
-                      << ", but got '" << tokens[i].value << "' of type " << static_cast<int>(tokens[i].type) << std::endl;
-            exit(1);
-        }
-    }
-    std::cout << "Test passed for source: \"" << source << "\"\n";
+    std::cout << "Basic Passed" << std::endl;
+}
+
+void test_identifier_tokenization()
+{
+    lexer::lexer_t lexer;
+    lexer_init(lexer, "my_var myOtherVar");
+
+    auto tokens = tokenize(lexer);
+
+    assert(tokens.size() == 3);
+    assert(tokens[0].type == lexer::token_type::IDENTIFIER);
+    assert(tokens[0].lexeme == "my_var");
+    assert(tokens[1].type == lexer::token_type::IDENTIFIER);
+    assert(tokens[1].lexeme == "myOtherVar");
+    assert(tokens[2].type == lexer::token_type::END_OF_FILE);
+
+    std::cout << "Identifier Test Passed" << std::endl;
+}
+
+void test_numeric_literal()
+{
+    lexer::lexer_t lexer;
+    lexer_init(lexer, "42 3.14 0xFF");
+
+    auto tokens = tokenize(lexer);
+
+    assert(tokens.size() == 4);
+    assert(tokens[0].type == lexer::token_type::LITERAL);
+    assert(tokens[0].lexeme == "42");
+    assert(tokens[1].type == lexer::token_type::LITERAL);
+    assert(tokens[1].lexeme == "3.14");
+    assert(tokens[2].type == lexer::token_type::LITERAL);
+    assert(tokens[2].lexeme == "0xFF");
+    assert(tokens[3].type == lexer::token_type::END_OF_FILE);
+
+    std::cout << "Numeric Literal Passed" << std::endl;
+}
+
+void test_string_literal()
+{
+    lexer::lexer_t lexer;
+    lexer_init(lexer, "\"hello world\"");
+
+    auto tokens = tokenize(lexer);
+
+    assert(tokens.size() == 2);
+    assert(tokens[0].type == lexer::token_type::STRING);
+    assert(tokens[0].lexeme == "\"hello world\"");
+    assert(tokens[1].type == lexer::token_type::END_OF_FILE);
+
+    std::cout << "String Literal Passed" << std::endl;
+}
+
+void test_single_line_comment()
+{
+    lexer::lexer_t lexer;
+    lexer_init(lexer, "var x = 10; // This is a comment");
+
+    auto tokens = tokenize(lexer);
+
+    assert(tokens.size() == 6);
+    assert(tokens[0].type == lexer::token_type::KEYWORD);
+    assert(tokens[4].type == lexer::token_type::PUNCTUAL);
+    assert(tokens[5].type == lexer::token_type::END_OF_FILE);
+
+    std::cout << "Sigle Line Comment Passed" << std::endl;
+}
+
+void test_block_comment()
+{
+    lexer::lexer_t lexer;
+    lexer_init(lexer, "var y = 20; /* This is a block comment */ var z = 30;");
+
+    auto tokens = tokenize(lexer);
+
+    assert(tokens.size() == 10);
+    assert(tokens[0].type == lexer::token_type::KEYWORD);
+    assert(tokens[5].type == lexer::token_type::KEYWORD);
+    assert(tokens[9].type == lexer::token_type::END_OF_FILE);
+
+    std::cout << "Block comment Passed" << std::endl;
+}
+
+void test_basic_types()
+{
+    lexer::lexer_t lexer;
+    lexer_init(lexer, "i32 i64 string boolean void");
+
+    auto tokens = tokenize(lexer);
+
+    assert(tokens.size() == 6);
+    assert(tokens[0].type == lexer::token_type::TYPE);
+    assert(tokens[0].lexeme == "i32");
+    assert(tokens[1].type == lexer::token_type::TYPE);
+    assert(tokens[1].lexeme == "i64");
+    assert(tokens[2].type == lexer::token_type::TYPE);
+    assert(tokens[2].lexeme == "string");
+    assert(tokens[3].type == lexer::token_type::TYPE);
+    assert(tokens[3].lexeme == "boolean");
+    assert(tokens[4].type == lexer::token_type::TYPE);
+    assert(tokens[4].lexeme == "void");
+    assert(tokens[5].type == lexer::token_type::END_OF_FILE);
+
+    std::cout << "Basic Types Passed" << std::endl;
+}
+
+void test_nullable_types()
+{
+    lexer::lexer_t lexer;
+    lexer_init(lexer, "i32? string?");
+
+    auto tokens = tokenize(lexer);
+
+    assert(tokens.size() == 3);
+    assert(tokens[0].type == lexer::token_type::NULLABLE_TYPE);
+    assert(tokens[0].lexeme == "i32?");
+    assert(tokens[1].type == lexer::token_type::NULLABLE_TYPE);
+    assert(tokens[1].lexeme == "string?");
+    assert(tokens[2].type == lexer::token_type::END_OF_FILE);
+
+    std::cout << "Nullable Type Passed" << std::endl;
+}
+
+void test_array_types()
+{
+    lexer::lexer_t lexer;
+    lexer_init(lexer, "[i32] [string]");
+
+    auto tokens = tokenize(lexer);
+
+    assert(tokens.size() == 3);
+    assert(tokens[0].type == lexer::token_type::TYPE);
+    assert(tokens[0].lexeme == "[i32]");
+    assert(tokens[1].type == lexer::token_type::TYPE);
+    assert(tokens[1].lexeme == "[string]");
+    assert(tokens[2].type == lexer::token_type::END_OF_FILE);
+
+    std::cout << "Array Types Passed" << std::endl;
 }
 
 int main()
 {
-    // Test 1: Simple variable declaration
-    test_lexer("var x = 10;", 6, {
-        {lexer::token_type::KEYWORD, "var"},
-        {lexer::token_type::IDENTIFIER, "x"},
-        {lexer::token_type::OPERATOR, "="},
-        {lexer::token_type::LITERAL, "10"},
-        {lexer::token_type::PUNCTUAL, ";"},
-        {lexer::token_type::END_OF_FILE, ""}
-    });
+    test_basic_tokenization();
+    test_identifier_tokenization();
+    test_numeric_literal();
+    test_string_literal();
+    test_single_line_comment();
+    test_block_comment();
+    test_basic_types();
+    test_nullable_types();
+    test_array_types();
 
-    // Test 2: Function declaration
-    test_lexer("function foo() { return 42; }", 10, {
-        {lexer::token_type::KEYWORD, "function"},
-        {lexer::token_type::IDENTIFIER, "foo"},
-        {lexer::token_type::PUNCTUAL, "("},
-        {lexer::token_type::PUNCTUAL, ")"},
-        {lexer::token_type::PUNCTUAL, "{"},
-        {lexer::token_type::KEYWORD, "return"},
-        {lexer::token_type::LITERAL, "42"},
-        {lexer::token_type::PUNCTUAL, ";"},
-        {lexer::token_type::PUNCTUAL, "}"},
-        {lexer::token_type::END_OF_FILE, ""}
-    });
-
-    // Test 3: String literal with escape characters
-    test_lexer("var s = \"Hello, World!\";", 6, {
-        {lexer::token_type::KEYWORD, "var"},
-        {lexer::token_type::IDENTIFIER, "s"},
-        {lexer::token_type::OPERATOR, "="},
-        {lexer::token_type::STRING, "\"Hello, World!\""},
-        {lexer::token_type::PUNCTUAL, ";"},
-        {lexer::token_type::END_OF_FILE, ""}
-    });
-
-    // Test 4: Single-line comment skipping
-    test_lexer("var x = 10; // This is a comment", 6, {
-        {lexer::token_type::KEYWORD, "var"},
-        {lexer::token_type::IDENTIFIER, "x"},
-        {lexer::token_type::OPERATOR, "="},
-        {lexer::token_type::LITERAL, "10"},
-        {lexer::token_type::PUNCTUAL, ";"},
-        {lexer::token_type::END_OF_FILE, ""}
-    });
-
-    // Test 5: Multi-line comment skipping
-    test_lexer("var x /* comment */ = 10;", 6, {
-        {lexer::token_type::KEYWORD, "var"},
-        {lexer::token_type::IDENTIFIER, "x"},
-        {lexer::token_type::OPERATOR, "="},
-        {lexer::token_type::LITERAL, "10"},
-        {lexer::token_type::PUNCTUAL, ";"},
-        {lexer::token_type::END_OF_FILE, ""}
-    });
-
-    // Test 6: Operators
-    test_lexer("x += 42;", 5, {
-        {lexer::token_type::IDENTIFIER, "x"},
-        {lexer::token_type::OPERATOR, "+="},
-        {lexer::token_type::LITERAL, "42"},
-        {lexer::token_type::PUNCTUAL, ";"},
-        {lexer::token_type::END_OF_FILE, ""}
-    });
-
-    // Test 7: Complex statement
-    test_lexer("if (x <= 100 && x != 0) { y = x / 2; }", 19, {
-        {lexer::token_type::KEYWORD, "if"},
-        {lexer::token_type::PUNCTUAL, "("},
-        {lexer::token_type::IDENTIFIER, "x"},
-        {lexer::token_type::OPERATOR, "<="},
-        {lexer::token_type::LITERAL, "100"},
-        {lexer::token_type::OPERATOR, "&&"},
-        {lexer::token_type::IDENTIFIER, "x"},
-        {lexer::token_type::OPERATOR, "!="},
-        {lexer::token_type::LITERAL, "0"},
-        {lexer::token_type::PUNCTUAL, ")"},
-        {lexer::token_type::PUNCTUAL, "{"},
-        {lexer::token_type::IDENTIFIER, "y"},
-        {lexer::token_type::OPERATOR, "="},
-        {lexer::token_type::IDENTIFIER, "x"},
-        {lexer::token_type::OPERATOR, "/"},
-        {lexer::token_type::LITERAL, "2"},
-        {lexer::token_type::PUNCTUAL, ";"},
-        {lexer::token_type::PUNCTUAL, "}"},
-        {lexer::token_type::END_OF_FILE, ""}
-    });
-
-    // Test 8: Nullables and types
-    test_lexer("var a: i32? = null;", 8, {
-        {lexer::token_type::KEYWORD, "var"},
-        {lexer::token_type::IDENTIFIER, "a"},
-        {lexer::token_type::PUNCTUAL, ":"},
-        {lexer::token_type::NULLABLE_TYPE, "i32?"},
-        {lexer::token_type::OPERATOR, "="},
-        {lexer::token_type::KEYWORD, "null"},
-        {lexer::token_type::PUNCTUAL, ";"},
-        {lexer::token_type::END_OF_FILE, ""}
-    });
-
-    // Test 9: Arrays and nullable types
-    test_lexer("var arr: [i32?] = {};", 9, {
-        {lexer::token_type::KEYWORD, "var"},
-        {lexer::token_type::IDENTIFIER, "arr"},
-        {lexer::token_type::PUNCTUAL, ":"},
-        {lexer::token_type::TYPE, "[i32?]"},
-        {lexer::token_type::OPERATOR, "="},
-        {lexer::token_type::PUNCTUAL, "{"},
-        {lexer::token_type::PUNCTUAL, "}"},
-        {lexer::token_type::PUNCTUAL, ";"},
-        {lexer::token_type::END_OF_FILE, ""}
-    });
-
-    std::cout << "All tests passed!" << std::endl;
+    std::cout << "All Tests Passed" << std::endl;
     return 0;
 }

@@ -2,12 +2,12 @@
 // Created by alpluspluss on 9/22/2024 AD.
 //
 
-#include "../include/lexer.h"
 #include <algorithm>
 #include <bitset>
 #include <cstring>
 #include <iostream>
 #include <unordered_set>
+#include "lang.h"
 
 #define WHITESPACE_BITMASK_LOW (1ULL << ' ' | 1ULL << '\t' | 1ULL << '\n' | 1ULL << '\r' | 1ULL << '\v' | 1ULL << '\f')
 #define IS_WHITESPACE(c) (((unsigned char)(c) < 128) && (WHITESPACE_BITMASK_LOW & (1ULL << (c))))
@@ -18,13 +18,14 @@
         (lexer).current_char = ((lexer).position < (lexer).source.size()) ? (lexer).source[(lexer).position] : '\0';    \
         int is_newline = (lexer).current_char == '\n';  \
         (lexer).line += is_newline; \
-        (lexer).column = is_newline ? 1 : ((lexer).column + 1); \
+        lexer.column = is_newline ? 1 : ((lexer).column + 1); \
     }   \
-    while (0) \
+    while (0)
 
 #define PEEK_NEXT(lexer) \
     ((lexer).position + 1 < (lexer).source.size() ? (lexer).source[(lexer).position + 1] : '\0')
-static constexpr std::bitset<256> isAlphaTable = []
+
+static const std::bitset<256> isAlphaTable = []
 {
     std::bitset<256> table;
     for (auto i = 0; i < 256; ++i)
@@ -34,24 +35,25 @@ static constexpr std::bitset<256> isAlphaTable = []
     }
     return table;
 }();
-static constexpr std::bitset<256> isDigitTable = []
+static const std::bitset<256> isDigitTable = []
 {
     std::bitset<256> table;
     for (int i = '0'; i <= '9'; ++i)
         table.set(i);
     return table;
 }();
-static constexpr std::bitset<256> isXdigitTable = []
+static const std::bitset<256> isXdigitTable = []
 {
     std::bitset<256> table = isDigitTable;
     for (int i = 'a'; i <= 'f'; ++i)
     {
         table.set(i);
-        table.set(i - 32);
+        table.set(i - 32);  // A-F
     }
     return table;
 }();
-static constexpr std::bitset<256> is_alnum_table = isAlphaTable | isDigitTable;
+static const std::bitset<256> is_alnum_table = isAlphaTable | isDigitTable;
+
 constexpr bool isAlpha(const char c)
 {
     return isAlphaTable[static_cast<unsigned char>(c)];
@@ -68,6 +70,7 @@ constexpr bool isAlnum(const char c)
 {
     return is_alnum_table[static_cast<unsigned char>(c)];
 }
+
 static constexpr std::array<std::pair<std::string_view, lexer::token_type>, 25> keyword_t = {{
     { "true", lexer::token_type::KEYWORD }, { "false", lexer::token_type::KEYWORD }, { "null", lexer::token_type::KEYWORD },
     { "package", lexer::token_type::KEYWORD }, { "import", lexer::token_type::KEYWORD }, { "from", lexer::token_type::KEYWORD },
@@ -77,19 +80,23 @@ static constexpr std::array<std::pair<std::string_view, lexer::token_type>, 25> 
     { "static", lexer::token_type::KEYWORD }, { "virtual", lexer::token_type::KEYWORD }, { "inherits", lexer::token_type::KEYWORD },
     { "final", lexer::token_type::KEYWORD }
 }};
+
 static constexpr std::array<std::pair<std::string_view, lexer::token_type>, 10> type_t = {{
     { "i32", lexer::token_type::TYPE }, { "i64", lexer::token_type::TYPE }, { "u32", lexer::token_type::TYPE }, { "u64", lexer::token_type::TYPE },
     { "f32", lexer::token_type::TYPE }, { "f64", lexer::token_type::TYPE }, { "string", lexer::token_type::TYPE }, { "boolean", lexer::token_type::TYPE },
     { "void", lexer::token_type::TYPE }, { "auto", lexer::token_type::TYPE }
 }};
+
 static const std::unordered_set<std::string_view> twoCharOp_t = {
     "->", "==", "!=", "<=", ">=", "&&", "||", "<<", ">>", "++", "--", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>="
 };
+
 void reportError(lexer::lexer_t& lexer, const std::string& msg)
 {
     lexer.error_log.push_back(msg);
 }
-void lexer::lexerInit(lexer_t& lexer, const std::string_view source)
+
+void lexer::lexer_init(lexer_t& lexer, const std::string_view source)
 {
     lexer.source = source;
     lexer.position = 0;
@@ -100,12 +107,14 @@ void lexer::lexerInit(lexer_t& lexer, const std::string_view source)
     lexer.tokens.clear();
     lexer.error_log.clear();
 }
-void lexer::skipWhitespaceAndComment(lexer_t& lexer)
+
+void lexer::skip_whitespace_comment(lexer_t& lexer)
 {
     while (true)
     {
         while (IS_WHITESPACE(lexer.current_char))
             ADVANCE(lexer);
+
         if (lexer.current_char == '/' && PEEK_NEXT(lexer) == '/')
         {
             ADVANCE(lexer);
@@ -117,6 +126,7 @@ void lexer::skipWhitespaceAndComment(lexer_t& lexer)
                 ADVANCE(lexer);
             continue;
         }
+
         if (lexer.current_char == '/' && PEEK_NEXT(lexer) == '*')
         {
             ADVANCE(lexer);
@@ -124,20 +134,21 @@ void lexer::skipWhitespaceAndComment(lexer_t& lexer)
             while (lexer.current_char != '\0' && !(lexer.current_char == '*' && PEEK_NEXT(lexer) == '/'))
                 ADVANCE(lexer);
 
-            if (lexer.current_char == '*')
+            if (lexer.current_char == '\0')
             {
-                ADVANCE(lexer);
-                if (lexer.current_char == '/')
-                {
-                    ADVANCE(lexer);
-                }
+                reportError(lexer, "Unterminated block comment");
+                return;
             }
+
+            ADVANCE(lexer);
             continue;
         }
+
         break;
     }
 }
-lexer::token_t lexer::handleIdentifier(lexer_t& lexer)
+
+lexer::token_t lexer::handle_identifier(lexer_t& lexer)
 {
     const auto start = lexer.position;
     while (isAlnum(lexer.current_char) || lexer.current_char == '_')
@@ -160,12 +171,10 @@ lexer::token_t lexer::handleIdentifier(lexer_t& lexer)
         return { keyword_it->second, identifier };
     return { token_type::IDENTIFIER, identifier };
 }
-lexer::token_t lexer::handleLiteral(lexer_t& lexer)
+
+lexer::token_t lexer::handle_literal(lexer_t& lexer)
 {
     const auto start = lexer.position;
-
-    if (lexer.current_char == '-')
-        ADVANCE(lexer);
 
     const bool isHex = lexer.current_char == '0' && (PEEK_NEXT(lexer) == 'x' || PEEK_NEXT(lexer) == 'X');
     if (isHex)
@@ -180,6 +189,11 @@ lexer::token_t lexer::handleLiteral(lexer_t& lexer)
     if (!isHex && lexer.current_char == '.')
     {
         ADVANCE(lexer);
+        if (!isDigit(lexer.current_char))
+        {
+            reportError(lexer, "Invalid floating point number at line " + std::to_string(lexer.line) + ", column " + std::to_string(lexer.column));
+        }
+
         while (isDigit(lexer.current_char))
             ADVANCE(lexer);
     }
@@ -189,13 +203,18 @@ lexer::token_t lexer::handleLiteral(lexer_t& lexer)
         ADVANCE(lexer);
         if (lexer.current_char == '+' || lexer.current_char == '-')
             ADVANCE(lexer);
+        if (!isDigit(lexer.current_char))
+        {
+            reportError(lexer, "Invalid exponent in floating point number at line " + std::to_string(lexer.line) + ", column " + std::to_string(lexer.column));
+        }
         while (isDigit(lexer.current_char))
             ADVANCE(lexer);
     }
 
     return { token_type::LITERAL, lexer.source.substr(start, lexer.position - start) };
 }
-lexer::token_t lexer::handleOperator(lexer_t& lexer)
+
+lexer::token_t lexer::handle_operator(lexer_t& lexer)
 {
     const auto start = lexer.position;
     if (lexer.current_char != '\0' && PEEK_NEXT(lexer) != '\0')
@@ -218,7 +237,8 @@ lexer::token_t lexer::handleOperator(lexer_t& lexer)
 
     return { token_type::UNKNOWN, lexer.source.substr(start, 1) };
 }
-lexer::token_t lexer::handlePunctual(lexer_t& lexer)
+
+lexer::token_t lexer::handle_punctual(lexer_t& lexer)
 {
     const auto start = lexer.position;
     const char punct = lexer.current_char;
@@ -232,7 +252,8 @@ lexer::token_t lexer::handlePunctual(lexer_t& lexer)
 
     return { token_type::PUNCTUAL, lexer.source.substr(start, 1) };
 }
-lexer::token_t lexer::handleString(lexer_t& lexer)
+
+lexer::token_t lexer::handle_string(lexer_t& lexer)
 {
     const auto start = lexer.position;
     const char quoteType = lexer.current_char;
@@ -258,7 +279,8 @@ lexer::token_t lexer::handleString(lexer_t& lexer)
     reportError(lexer, "Unclosed string literal at line " + std::to_string(lexer.line) + ", column " + std::to_string(lexer.column));
     return { token_type::UNKNOWN, lexer.source.substr(start, lexer.position - start) };
 }
-lexer::token_t lexer::handleType(lexer_t& lexer)
+
+lexer::token_t lexer::handle_type(lexer_t& lexer)
 {
     const auto start = lexer.position;
     if (lexer.current_char == '[')
@@ -299,20 +321,22 @@ lexer::token_t lexer::handleType(lexer_t& lexer)
     if (type_it != type_t.end())
         return { token_type::TYPE, typeName };
 
-    return { token_type::UNKNOWN, typeName };
+    return { token_type::IDENTIFIER, typeName };
 }
-lexer::token_t lexer::handleUnknown(lexer_t& lexer)
+
+lexer::token_t lexer::handle_unknown(lexer_t& lexer)
 {
     const std::string error_msg = "Unknown character '" + std::string(1, lexer.current_char) + "' at line " + std::to_string(lexer.line) + ", column " + std::to_string(lexer.column);
     reportError(lexer, error_msg);
     ADVANCE(lexer);
     return { token_type::UNKNOWN, {} };
 }
-lexer::token_t lexer::nextToken(lexer_t& lexer)
+
+lexer::token_t lexer::next_token(lexer_t& lexer)
 {
     while (true)
     {
-        skipWhitespaceAndComment(lexer);
+        skip_whitespace_comment(lexer);
         if (lexer.current_char == '\0')
             return { token_type::END_OF_FILE, {} };
 
@@ -350,22 +374,23 @@ lexer::token_t lexer::nextToken(lexer_t& lexer)
             break;
 
             case state_i::IDENTIFIER_STATE:
-                return handleIdentifier(lexer);
+                return handle_identifier(lexer);
             case state_i::TYPE_STATE:
-                return handleType(lexer);
+                return handle_type(lexer);
             case state_i::LITERAL_STATE:
-                return handleLiteral(lexer);
+                return handle_literal(lexer);
             case state_i::STRING_STATE:
-                return handleString(lexer);
+                return handle_string(lexer);
             case state_i::OPERATOR_STATE:
-                return handleOperator(lexer);
+                return handle_operator(lexer);
             case state_i::PUNCTUAL_STATE:
-                return handlePunctual(lexer);
+                return handle_punctual(lexer);
             default:
                 reportError(lexer, "Unexpected state at line " + std::to_string(lexer.line) + ", column " + std::to_string(lexer.column));
         }
     }
 }
+
 std::vector<lexer::token_t> lexer::tokenize(lexer_t& lexer)
 {
     std::vector<token_t> tokens;
@@ -375,7 +400,7 @@ std::vector<lexer::token_t> lexer::tokenize(lexer_t& lexer)
     do
     {
         lexer.state = state_i::START;
-        token = nextToken(lexer);
+        token = next_token(lexer);
         if (token.type != token_type::UNKNOWN)
             tokens.emplace_back(token);
     }
@@ -383,7 +408,8 @@ std::vector<lexer::token_t> lexer::tokenize(lexer_t& lexer)
 
     return tokens;
 }
-void lexer::flushErrors(const lexer_t& lexer)
+
+void lexer::flush_errors(const lexer_t& lexer)
 {
     for (const auto& error : lexer.error_log)
         std::cerr << error << std::endl;
