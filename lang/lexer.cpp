@@ -130,7 +130,7 @@ static constexpr std::array<std::pair<std::string_view, lexer::token_type>, 3> a
     { "@deprecated", lexer::token_type::ANNOTATION },
 }};
 
-static constexpr std::unordered_set<std::string_view> twoCharOp_t = {
+static const std::unordered_set<std::string_view> twoCharOp_t = {
     "->", "==", "!=", "<=", ">=", "&&", "||", "<<", ">>", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>="
 };
 
