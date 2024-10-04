@@ -78,7 +78,28 @@ namespace lexer
 
 namespace parser
 {
+    struct parser_t
+    {
+        size_t token_index;  // Current index in the token list
+        std::unique_ptr<std::vector<lexer::token_t>> tokens;  // List of tokens from the lexer
+        std::vector<std::string> error_log;  // Collects parsing errors
+    };
 
+    void parser_init(parser_t& parser, const std::vector<lexer::token_t>& tokens);
+
+    inline lexer::token_t peek(const parser_t& parser);
+    inline lexer::token_t next(parser_t& parser);
+    inline void consume(parser_t& parser);
+
+    inline bool expect_type(parser_t& parser, lexer::token_type type);
+    inline bool expect_value(parser_t& parser, const std::string_view& value);
+
+    bool parse_program(parser_t& parser);
+    bool parse_function(parser_t& parser);
+    bool parse_expression(parser_t& parser);
+    bool parse_variable(parser_t& parser);
+
+    void log_error(parser_t& parser, const std::string& message);
 }
 
 #endif

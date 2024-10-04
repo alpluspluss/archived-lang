@@ -60,7 +60,7 @@ function main() -> u8
     var x: u32 = 0;
     x += 1;
 
-    var result: f32 = Player.dot(Vector3(1, 2, 3), Vector3(4, 5, 6));
+    const result: f32 = Player.dot(Vector3(1, 2, 3), Vector3(4, 5, 6));
 
     var intGeneric: Generic<i32> = new Generic<i32>(5);
     var intValue: i32 = intGeneric.GetValue();
