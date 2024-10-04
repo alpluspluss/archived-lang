@@ -14,6 +14,7 @@ namespace lexer
     {
         IDENTIFIER,
         LITERAL,
+        PATH,
         OPERATOR,
         PUNCTUAL,
         STRING,
@@ -21,6 +22,7 @@ namespace lexer
         ANNOTATION,
         TYPE,
         NULLABLE_TYPE,
+        ARRAY_TYPE,
         UNKNOWN,
         END_OF_FILE,
     };
@@ -41,7 +43,6 @@ namespace lexer
         KEYWORD_STATE,
         TYPE_STATE,
         STRING_STATE,
-        GENERIC_STATE,
         OPERATOR_STATE,
         UNKNOWN_STATE,
         END_STATE
@@ -60,7 +61,6 @@ namespace lexer
     };
 
     void lexer_init(lexer_t& lexer, std::string_view source);
-    char peek_next(const lexer_t& lexer);
     void skip_whitespace_comment(lexer_t& lexer);
     token_t handle_annotation(lexer_t& lexer);
     token_t handle_identifier(lexer_t& lexer);
@@ -69,7 +69,6 @@ namespace lexer
     token_t handle_punctual(lexer_t& lexer);
     token_t handle_string(lexer_t& lexer);
     token_t handle_type(lexer_t& lexer);
-    token_t handle_generic(lexer_t& lexer);
     token_t handle_unknown(lexer_t& lexer);
     token_t next_token(lexer_t& lexer);
 
@@ -77,4 +76,9 @@ namespace lexer
     void flush_errors(const lexer_t& lexer);
 }
 
-#endif //LANG_H
+namespace parser
+{
+
+}
+
+#endif

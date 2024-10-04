@@ -12,19 +12,6 @@
 
 #define WHITESPACE_BITMASK_LOW (1ULL << ' ' | 1ULL << '\t' | 1ULL << '\n' | 1ULL << '\r' | 1ULL << '\v' | 1ULL << '\f')
 #define IS_WHITESPACE(c) (((unsigned char)(c) < 128) && (WHITESPACE_BITMASK_LOW & (1ULL << (c))))
-#define ADVANCE(lexer)  \
-    do  \
-    {   \
-        ++(lexer).position; \
-        (lexer).current_char = ((lexer).position < (lexer).source.size()) ? (lexer).source[(lexer).position] : '\0';    \
-        int is_newline = (lexer).current_char == '\n';  \
-        (lexer).line += is_newline; \
-        lexer.column = is_newline ? 1 : ((lexer).column + 1); \
-    }   \
-    while (0)
-
-#define PEEK_NEXT(lexer) \
-    ((lexer).position + 1 < (lexer).source.size() ? (lexer).source[(lexer).position + 1] : '\0')
 
 static const std::bitset<256> isAlphaTable = []
 {
@@ -72,20 +59,74 @@ constexpr bool isAlnum(const char c)
     return is_alnum_table[static_cast<unsigned char>(c)];
 }
 
-static const std::array<std::pair<std::string_view, lexer::token_type>, 25> keyword_t = {{
-    { "true", lexer::token_type::KEYWORD }, { "false", lexer::token_type::KEYWORD }, { "null", lexer::token_type::KEYWORD },
-    { "using", lexer::token_type::KEYWORD }, { "import", lexer::token_type::KEYWORD }, { "from", lexer::token_type::KEYWORD },
-    { "var", lexer::token_type::KEYWORD }, { "const", lexer::token_type::KEYWORD }, { "function", lexer::token_type::KEYWORD },
-    { "return", lexer::token_type::KEYWORD }, { "if", lexer::token_type::KEYWORD }, { "else", lexer::token_type::KEYWORD },
-    { "for", lexer::token_type::KEYWORD }, { "while", lexer::token_type::KEYWORD }, { "class", lexer::token_type::KEYWORD },
-    { "static", lexer::token_type::KEYWORD }, { "virtual", lexer::token_type::KEYWORD }, { "inherits", lexer::token_type::KEYWORD },
-    { "final", lexer::token_type::KEYWORD }, { "public", lexer::token_type::KEYWORD }, { "private", lexer::token_type::KEYWORD }
+static constexpr std::array<std::pair<std::string_view, lexer::token_type>, 34> keyword_t = {{
+    // Type
+    { "true", lexer::token_type::KEYWORD },
+    { "false", lexer::token_type::KEYWORD },
+    { "null", lexer::token_type::KEYWORD },
+    // Imports
+    { "package", lexer::token_type::KEYWORD },
+    { "using", lexer::token_type::KEYWORD },
+    { "import", lexer::token_type::KEYWORD },
+    // Declaration
+    { "var", lexer::token_type::KEYWORD },
+    { "const", lexer::token_type::KEYWORD },
+    { "function", lexer::token_type::KEYWORD },
+    { "static", lexer::token_type::KEYWORD },
+    { "inline", lexer::token_type::KEYWORD },
+    { "return", lexer::token_type::KEYWORD },
+    { "new", lexer::token_type::KEYWORD },
+    // Control flow
+    { "if", lexer::token_type::KEYWORD },
+    { "else", lexer::token_type::KEYWORD },
+    { "for", lexer::token_type::KEYWORD },
+    { "while", lexer::token_type::KEYWORD },
+    { "break", lexer::token_type::KEYWORD },
+    { "continue", lexer::token_type::KEYWORD },
+    { "switch", lexer::token_type::KEYWORD },
+    { "case", lexer::token_type::KEYWORD },
+    { "default", lexer::token_type::KEYWORD },
+    // Object-Oriented
+    { "class", lexer::token_type::KEYWORD },
+    { "virtual", lexer::token_type::KEYWORD },
+    { "extends", lexer::token_type::KEYWORD },
+    { "final", lexer::token_type::KEYWORD },
+    { "public", lexer::token_type::KEYWORD },
+    { "private", lexer::token_type::KEYWORD },
+    // Asynchhronous
+    { "async", lexer::token_type::KEYWORD },
+    { "await", lexer::token_type::KEYWORD },
+    // Exception handling
+    { "try", lexer::token_type::KEYWORD },
+    { "catch", lexer::token_type::KEYWORD },
+    { "finally", lexer::token_type::KEYWORD },
+    { "throw", lexer::token_type::KEYWORD }
 }};
 
-static const std::array<std::pair<std::string_view, lexer::token_type>, 10> type_t = {{
-    { "i32", lexer::token_type::TYPE }, { "i64", lexer::token_type::TYPE }, { "u32", lexer::token_type::TYPE }, { "u64", lexer::token_type::TYPE },
-    { "f32", lexer::token_type::TYPE }, { "f64", lexer::token_type::TYPE }, { "string", lexer::token_type::TYPE }, { "boolean", lexer::token_type::TYPE },
-    { "void", lexer::token_type::TYPE }, { "auto", lexer::token_type::TYPE }
+static constexpr std::array<std::pair<std::string_view, lexer::token_type>, 17> type_t = {{
+    { "u8", lexer::token_type::TYPE },
+    { "i8", lexer::token_type::TYPE },
+    { "u16", lexer::token_type::TYPE },
+    { "i16", lexer::token_type::TYPE },
+    { "u16", lexer::token_type::TYPE },
+    { "i32", lexer::token_type::TYPE },
+    { "i64", lexer::token_type::TYPE },
+    { "u32", lexer::token_type::TYPE },
+    { "u64", lexer::token_type::TYPE },
+    { "f32", lexer::token_type::TYPE },
+    { "f64", lexer::token_type::TYPE },
+    { "string", lexer::token_type::TYPE },
+    { "boolean", lexer::token_type::TYPE },
+    { "void", lexer::token_type::TYPE },
+    { "auto", lexer::token_type::TYPE },
+    { "Unique", lexer::token_type::TYPE },
+    { "Shared", lexer::token_type::TYPE }
+}};
+
+static constexpr std::array<std::pair<std::string_view, lexer::token_type>, 3> annotation_t = {{
+    { "@packed", lexer::token_type::ANNOTATION },
+    { "@aligned", lexer::token_type::ANNOTATION },
+    { "@deprecated", lexer::token_type::ANNOTATION },
 }};
 
 static const std::unordered_set<std::string_view> twoCharOp_t = {
@@ -95,6 +136,23 @@ static const std::unordered_set<std::string_view> twoCharOp_t = {
 void reportError(lexer::lexer_t& lexer, const std::string& msg)
 {
     lexer.error_log.push_back(msg);
+}
+
+inline void ADVANCE(lexer::lexer_t& lexer)
+{
+    if (lexer.current_char != '\0')
+    {
+        ++lexer.position;
+        lexer.current_char = lexer.position < lexer.source.size() ? lexer.source[lexer.position] : '\0';
+
+        lexer.line += lexer.current_char == '\n';
+        lexer.column = lexer.current_char == '\n' ? 1 : lexer.column + 1;
+    }
+}
+
+inline char PEEK_NEXT(const lexer::lexer_t& lexer)
+{
+    return lexer.position + 1 < lexer.source.size() ? lexer.source[lexer.position + 1] : '\0';
 }
 
 void lexer::lexer_init(lexer_t& lexer, const std::string_view source)
@@ -111,41 +169,43 @@ void lexer::lexer_init(lexer_t& lexer, const std::string_view source)
 
 void lexer::skip_whitespace_comment(lexer_t& lexer)
 {
-    while (true)
+    while (IS_WHITESPACE(lexer.current_char) || lexer.current_char == '/')
     {
-        while (IS_WHITESPACE(lexer.current_char))
-            ADVANCE(lexer);
-
-        if (lexer.current_char == '/' && PEEK_NEXT(lexer) == '/')
+        if (lexer.current_char == '/')
         {
-            ADVANCE(lexer);
-            ADVANCE(lexer);
-            while (lexer.current_char != '\0' && lexer.current_char != '\n')
-                ADVANCE(lexer);
-
-            if (lexer.current_char == '\n')
-                ADVANCE(lexer);
-            continue;
-        }
-
-        if (lexer.current_char == '/' && PEEK_NEXT(lexer) == '*')
-        {
-            ADVANCE(lexer);
-            ADVANCE(lexer);
-            while (lexer.current_char != '\0' && !(lexer.current_char == '*' && PEEK_NEXT(lexer) == '/'))
-                ADVANCE(lexer);
-
-            if (lexer.current_char == '\0')
+            const char next_char = PEEK_NEXT(lexer);
+            const bool is_single_line_comment = next_char == '/';
+            const bool is_multi_line_comment = next_char == '*';
+            if (is_single_line_comment)
             {
-                reportError(lexer, "Unterminated block comment");
-                return;
+                while (lexer.current_char != '\n' && lexer.current_char != '\0')
+                {
+                    ADVANCE(lexer);
+                }
             }
-
-            ADVANCE(lexer);
-            continue;
+            else if (is_multi_line_comment)
+            {
+                ADVANCE(lexer);
+                ADVANCE(lexer);
+                while (lexer.current_char != '\0' && !(lexer.current_char == '*' && PEEK_NEXT(lexer) == '/'))
+                {
+                    ADVANCE(lexer);
+                }
+                if (lexer.current_char != '\0')
+                {
+                    ADVANCE(lexer);
+                    ADVANCE(lexer);
+                }
+            }
+            else
+            {
+                break;
+            }
         }
-
-        break;
+        else
+        {
+            ADVANCE(lexer);
+        }
     }
 }
 
@@ -153,38 +213,50 @@ lexer::token_t lexer::handle_annotation(lexer_t& lexer)
 {
     const auto start = lexer.position;
     ADVANCE(lexer);
+
     while (isAlnum(lexer.current_char) || lexer.current_char == '_')
-    {
         ADVANCE(lexer);
-    }
 
     std::string_view annotation_name = lexer.source.substr(start, lexer.position - start);
-
-    if (lexer.current_char == '(')
+    if (const auto annotation_it = std::ranges::find_if(annotation_t, [&](const auto& a) { return a.first == annotation_name; }); annotation_it != annotation_t.end())
     {
-        ADVANCE(lexer);
-        while (lexer.current_char != ')' && lexer.current_char != '\0')
-        {
-            ADVANCE(lexer);
-        }
-        if (lexer.current_char == ')')
-        {
-            ADVANCE(lexer);
-        }
-        annotation_name = lexer.source.substr(start, lexer.position - start);
+        return { annotation_it->second, annotation_name };
     }
-
-    return { token_type::ANNOTATION, annotation_name };
+    reportError(lexer, "Unknown annotation '" + std::string(annotation_name) + "' at line " + std::to_string(lexer.line));
+    return { token_type::UNKNOWN, annotation_name };
 }
 
 lexer::token_t lexer::handle_identifier(lexer_t& lexer)
 {
     const auto start = lexer.position;
-    while (isAlnum(lexer.current_char) || lexer.current_char == '_' || lexer.current_char == '.')
+    while (isAlnum(lexer.current_char) || lexer.current_char == '_')
     {
         ADVANCE(lexer);
     }
+
+    if (lexer.current_char == '.' && PEEK_NEXT(lexer) == '.' && lexer.source[lexer.position + 2] == '.')
+    {
+        ADVANCE(lexer);
+        ADVANCE(lexer);
+        ADVANCE(lexer);
+        return { token_type::IDENTIFIER, lexer.source.substr(start, lexer.position - start) };
+    }
+
+    while (lexer.current_char == '.' && isAlpha(PEEK_NEXT(lexer)))
+    {
+        ADVANCE(lexer);
+        while (isAlnum(lexer.current_char) || lexer.current_char == '_')
+        {
+            ADVANCE(lexer);
+        }
+    }
+
     std::string_view identifier = lexer.source.substr(start, lexer.position - start);
+
+    if (const auto keyword_it = std::ranges::find_if(keyword_t, [&](const auto& t) { return t.first == identifier; }); keyword_it != keyword_t.end())
+    {
+        return { keyword_it->second, identifier };
+    }
 
     if (const auto type_it = std::ranges::find_if(type_t, [&](const auto& t) { return t.first == identifier; }); type_it != type_t.end())
     {
@@ -196,8 +268,6 @@ lexer::token_t lexer::handle_identifier(lexer_t& lexer)
         return { type_it->second, identifier };
     }
 
-    if (const auto keyword_it = std::ranges::find_if(keyword_t, [&](const auto& t) { return t.first == identifier; }); keyword_it != keyword_t.end())
-        return { keyword_it->second, identifier };
     return { token_type::IDENTIFIER, identifier };
 }
 
@@ -309,73 +379,45 @@ lexer::token_t lexer::handle_string(lexer_t& lexer)
     return { token_type::UNKNOWN, lexer.source.substr(start, lexer.position - start) };
 }
 
-lexer::token_t lexer::handle_generic(lexer_t& lexer)
-{
-    const auto start = lexer.position;
-    ADVANCE(lexer);
-
-    while (lexer.current_char != '>' && lexer.current_char != '\0')
-    {
-        if (lexer.current_char == '<')
-        {
-            lexer.state = state_i::GENERIC_STATE;
-            return handle_generic(lexer);
-        }
-        ADVANCE(lexer);
-    }
-
-    if (lexer.current_char == '>')
-    {
-        ADVANCE(lexer);
-        return { token_type::TYPE, lexer.source.substr(start, lexer.position - start) };
-    }
-
-    reportError(lexer, "Unclosed generic type at line " + std::to_string(lexer.line) + ", column " + std::to_string(lexer.column));
-    return { token_type::UNKNOWN, lexer.source.substr(start, lexer.position - start) };
-}
-
 lexer::token_t lexer::handle_type(lexer_t& lexer)
 {
     const auto start = lexer.position;
     if (lexer.current_char == '[')
     {
         ADVANCE(lexer);
+        skip_whitespace_comment(lexer);
+
+        const auto type_start = lexer.position;
         while (isAlnum(lexer.current_char) || lexer.current_char == '_')
             ADVANCE(lexer);
 
-        if (lexer.current_char == '?')
+        std::string_view type_name = lexer.source.substr(type_start, lexer.position - type_start);
+        if (std::ranges::find_if(type_t, [&](const auto& t) { return t.first == type_name; }) == type_t.end())
         {
-            ADVANCE(lexer);
+            reportError(lexer, "Invalid type name inside array type.");
+            return { token_type::UNKNOWN, lexer.source.substr(start, lexer.position - start) };
         }
 
+        skip_whitespace_comment(lexer);
         if (lexer.current_char == ']')
         {
             ADVANCE(lexer);
+
+            if (const char next_char = PEEK_NEXT(lexer); lexer.current_char == '?' && next_char != ']')
+            {
+                ADVANCE(lexer);
+                return { token_type::NULLABLE_TYPE, lexer.source.substr(start, lexer.position - start) };
+            }
+
+            return { token_type::TYPE, lexer.source.substr(start, lexer.position - start) };
         }
 
-        return { token_type::TYPE, lexer.source.substr(start, lexer.position - start) };
+        reportError(lexer, "Expected ']' for array type.");
+        return { token_type::UNKNOWN, lexer.source.substr(start, lexer.position - start) };
     }
 
-    while (isAlnum(lexer.current_char) || lexer.current_char == '_')
-        ADVANCE(lexer);
-
-    if (lexer.current_char == '?')
-    {
-        ADVANCE(lexer);
-        return { token_type::NULLABLE_TYPE, lexer.source.substr(start, lexer.position - start) };
-    }
-
-    std::string_view typeName = lexer.source.substr(start, lexer.position - start);
-
-    const auto type_it = std::ranges::find_if(type_t, [&](const auto& pair)
-    {
-        return pair.first == typeName;
-    });
-
-    if (type_it != type_t.end())
-        return { token_type::TYPE, typeName };
-
-    return { token_type::IDENTIFIER, typeName };
+    reportError(lexer, "Expected '[' to begin array type.");
+    return { token_type::UNKNOWN, lexer.source.substr(start, lexer.position - start) };
 }
 
 lexer::token_t lexer::handle_unknown(lexer_t& lexer)
@@ -401,6 +443,10 @@ lexer::token_t lexer::next_token(lexer_t& lexer)
                 {
                     lexer.state = state_i::ANNOTATION_STATE;
                 }
+                else if (lexer.current_char == '[')
+                {
+                    lexer.state = state_i::TYPE_STATE;
+                }
                 else if (isAlpha(lexer.current_char) || lexer.current_char == '_')
                 {
                     lexer.state = state_i::IDENTIFIER_STATE;
@@ -409,10 +455,7 @@ lexer::token_t lexer::next_token(lexer_t& lexer)
                 {
                     lexer.state = state_i::LITERAL_STATE;
                 }
-                else if (lexer.current_char == '[')
-                {
-                    lexer.state = state_i::TYPE_STATE;
-                }
+
                 else if (lexer.current_char == '"' || lexer.current_char == '\'')
                 {
                     lexer.state = state_i::STRING_STATE;
@@ -424,10 +467,6 @@ lexer::token_t lexer::next_token(lexer_t& lexer)
                 else if (strchr("(){};,:", lexer.current_char))
                 {
                     lexer.state = state_i::PUNCTUAL_STATE;
-                }
-                else if (lexer.current_char == '<')
-                {
-                    lexer.state = state_i::GENERIC_STATE;
                 }
                 else
                 {
@@ -449,10 +488,11 @@ lexer::token_t lexer::next_token(lexer_t& lexer)
                 return handle_operator(lexer);
             case state_i::PUNCTUAL_STATE:
                 return handle_punctual(lexer);
-            case state_i::GENERIC_STATE:
-                return handle_generic(lexer);
+            case state_i::UNKNOWN_STATE:
+                return handle_unknown(lexer);
             default:
-                reportError(lexer, "Unexpected state at line " + std::to_string(lexer.line) + ", column " + std::to_string(lexer.column));
+                lexer.state = state_i::START;
+                ADVANCE(lexer);
         }
     }
 }
