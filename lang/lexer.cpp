@@ -59,7 +59,7 @@ constexpr bool isAlnum(const char c)
     return is_alnum_table[static_cast<unsigned char>(c)];
 }
 
-static constexpr std::array<std::pair<std::string_view, lexer::token_type>, 34> keyword_t = {{
+static constexpr std::array<std::pair<std::string_view, lexer::token_type>, 35> keyword_t = {{
     // Type
     { "true", lexer::token_type::KEYWORD },
     { "false", lexer::token_type::KEYWORD },
@@ -76,6 +76,7 @@ static constexpr std::array<std::pair<std::string_view, lexer::token_type>, 34> 
     { "inline", lexer::token_type::KEYWORD },
     { "return", lexer::token_type::KEYWORD },
     { "new", lexer::token_type::KEYWORD },
+    { "enum", lexer::token_type::KEYWORD },
     // Control flow
     { "if", lexer::token_type::KEYWORD },
     { "else", lexer::token_type::KEYWORD },
@@ -129,7 +130,7 @@ static constexpr std::array<std::pair<std::string_view, lexer::token_type>, 3> a
     { "@deprecated", lexer::token_type::ANNOTATION },
 }};
 
-static const std::unordered_set<std::string_view> twoCharOp_t = {
+static constexpr std::unordered_set<std::string_view> twoCharOp_t = {
     "->", "==", "!=", "<=", ">=", "&&", "||", "<<", ">>", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>="
 };
 

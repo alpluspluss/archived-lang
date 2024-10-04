@@ -10,7 +10,7 @@ int main()
     lexer::lexer_t lexer;
     lexer_init(lexer, source);
 
-    std::vector<lexer::token_t> tokens = tokenize(lexer);
+    const std::vector<lexer::token_t> tokens = tokenize(lexer);
     flush_errors(lexer);
     std::cout << "Token count: " << tokens.size() << std::endl;
     parser::parser_t parser;

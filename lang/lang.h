@@ -5,6 +5,7 @@
 #ifndef LANG_H
 #define LANG_H
 
+#include <memory>
 #include <string_view>
 #include <vector>
 
@@ -80,9 +81,9 @@ namespace parser
 {
     struct parser_t
     {
-        size_t token_index;  // Current index in the token list
-        std::unique_ptr<std::vector<lexer::token_t>> tokens;  // List of tokens from the lexer
-        std::vector<std::string> error_log;  // Collects parsing errors
+        size_t token_index;
+        std::unique_ptr<std::vector<lexer::token_t>> tokens;
+        std::vector<std::string> error_log;
     };
 
     void parser_init(parser_t& parser, const std::vector<lexer::token_t>& tokens);

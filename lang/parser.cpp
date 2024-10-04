@@ -1,9 +1,16 @@
 //
 // Created by alpluspluss on 10/03/2024 AD.
 //
+// TODO: Implement type solver
+// TODO: Implement ast builder
+// TODO: Implement parse_package
+// TODO: Implement parse_import
+// TODO: Implement parse_annotation
+// TODO: Implement parse_enum
+// TODO: Implement parse_class
 
-#include "lang.h"
 #include <iostream>
+#include "lang.h"
 
 void parser::parser_init(parser_t& parser, const std::vector<lexer::token_t>& tokens)
 {
@@ -22,7 +29,7 @@ lexer::token_t parser::peek(const parser_t& parser)
 
 lexer::token_t parser::next(parser_t& parser)
 {
-    lexer::token_t token = peek(parser);
+    const lexer::token_t token = peek(parser);
     consume(parser);
     return token;
 }
@@ -32,7 +39,7 @@ inline void parser::consume(parser_t& parser)
     parser.token_index += parser.token_index < parser.tokens->size();
 }
 
-inline bool parser::expect_type(parser_t& parser, lexer::token_type type)
+inline bool parser::expect_type(parser_t& parser, const lexer::token_type type)
 {
     const bool match = peek(parser).type == type;
     parser.token_index += match;
@@ -56,8 +63,7 @@ bool parser::parse_program(parser_t& parser)
 {
     while (parser.token_index < parser.tokens->size())
     {
-        const lexer::token_t& token = peek(parser);
-        if (token.value == "function")
+        if (const auto&[type, value] = peek(parser); value == "function")
         {
             if (!parse_function(parser))
             {
@@ -65,7 +71,7 @@ bool parser::parse_program(parser_t& parser)
                 return false;
             }
         }
-        else if (token.value == "var")
+        else if (value == "var")
         {
             if (!parse_variable(parser))
             {
@@ -73,13 +79,13 @@ bool parser::parse_program(parser_t& parser)
                 return false;
             }
         }
-        else if (token.type == lexer::token_type::END_OF_FILE)
+        else if (type == lexer::token_type::END_OF_FILE)
         {
             break;
         }
         else
         {
-            log_error(parser, "Unexpected token: " + std::string(token.value));
+            log_error(parser, "Unexpected token: " + std::string(value));
             return false;
         }
     }
@@ -104,7 +110,7 @@ bool parser::parse_function(parser_t& parser)
         return false;
     }
 
-    bool type_found = false;
+    auto type_found = false;
     for (const auto& type : {lexer::token_type::IDENTIFIER, lexer::token_type::TYPE, lexer::token_type::NULLABLE_TYPE})
     {
         if (expect_type(parser, type))
