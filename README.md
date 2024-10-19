@@ -5,7 +5,7 @@ The language is designed to be simple, expressive, and easy to learn, while prov
 overhead during runtime.
 
 > [!IMPORTANT]
-> Lumen has migrated to [Lumen](https://github.com/alpluspluss/lumen-lang).
+> Lumen has migrated to [Nightglow]([https://github.com/alpluspluss/lumen-lang](https://github.com/alpluspluss/nightglow-lang)).
 
 ## Example Code
 
