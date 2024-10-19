@@ -4,6 +4,9 @@ Lumen-Lang is a multi-paradigm, statically-typed programming language designed w
 The language is designed to be simple, expressive, and easy to learn, while providing little to none
 overhead during runtime.
 
+> [!IMPORTANT]
+> Lumen has migrated to [Lumen](https://github.com/alpluspluss/lumen-lang).
+
 ## Example Code
 
 Here’s a quick example of a simple `Vector3` class, a `Player` class, and the use of generic types in Quanta-Lang:
